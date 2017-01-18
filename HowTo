@@ -1,0 +1,10 @@
+
+Host to be checked:
+Copy the (bash) files in cmk-docker/host/plugins/ to the host in the directory: /usr/local/lib/check_mk_agent/plugins/ (or change to your specified plugins directory)
+
+Mods to check_mk_server:
+Copy the (python) files in cmk-docker/cmk-server/checks/ to your check_mk server in directory /opt/omd/versions/1.30/share/check_mk/checks/
+
+Maybe you'll need to give a : cmk -R to reload the new python scripts.
+
+Frank IJskes
