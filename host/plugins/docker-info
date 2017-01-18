@@ -1,0 +1,7 @@
+#!/bin/sh
+
+echo "<<<docker_info>>>"
+
+sudo docker info
+
+

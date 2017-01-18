@@ -1,0 +1,10 @@
+#!/bin/sh
+
+echo "<<<docker_dangling_volumes>>>"
+
+CNT=$(sudo docker volume ls -fq dangling=true | wc -l)
+
+#CNT=$((CNT-1))
+
+echo "Number of dangling volumes: $CNT"
+

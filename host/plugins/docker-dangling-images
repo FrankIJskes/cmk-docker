@@ -1,0 +1,8 @@
+#!/bin/sh
+
+echo "<<<docker_dangling_images>>>"
+
+CNT=$(sudo docker images -qf dangling=true | wc -l)
+
+echo "Number of dangling images: $CNT"
+

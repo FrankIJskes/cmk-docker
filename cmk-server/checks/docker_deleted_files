@@ -1,0 +1,35 @@
+#!/usr/bin/python
+# -*- encoding: utf-8; -*-
+# Als je een perf-o-meter wilt, kijk dan op: https://mathias-kettner.de/checkmk_devel_perfometer.html
+
+# the inventory function
+def inventory_docker_deleted_files(info):
+    inventory = [( None, {} )]
+
+    return inventory
+
+# the check function
+def check_docker_deleted_files(item, params, info):
+
+    warning_level=1
+    error_level=20
+    count = len( info )
+    perfdata = [( "Count", str(count) )]
+    if count >= warning_level:
+        error=1
+        result = "Open filecount: " +str( count )
+        if count > error_level:
+            error=2
+        yield [error, result, perfdata ]
+    else:
+        yield [ 0, "No deleted files open by docker" , perfdata ]
+    #return STATE infotext PERFDATA
+    # format PERFDATA -> [( name , value , name , value)
+
+# declare the check to Check_MK
+check_info["docker_deleted_files"] = {
+    "check_function"          : check_docker_deleted_files,
+    "inventory_function"      : inventory_docker_deleted_files,
+    "service_description"     : 'Docker - Deleted files open',
+    "has_perfdata"            : True,
+}

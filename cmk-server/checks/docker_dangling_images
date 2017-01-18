@@ -1,0 +1,30 @@
+#!/usr/bin/python
+# -*- encoding: utf-8; -*-
+# Als je een perf-o-meter wilt, kijk dan op: https://mathias-kettner.de/checkmk_devel_perfometer.html
+
+# the inventory function
+def inventory_docker_dangling_images(info):
+    inventory = [( None, {} )]
+
+    return inventory
+
+# the check function
+def check_docker_dangling_images(item, params, info):
+    for line in info:
+        count=line[4]
+    perfdata = [( "Count", str(count) )]
+    if int(count) > 0:
+        result = "Nr of dangling images: " + str(count)
+        yield [2, result, perfdata ]
+    else:
+        yield [ 0, "No dangling images" , perfdata ]
+    #return STATE infotext PERFDATA
+    # format PERFDATA -> [( name , value , name , value)
+
+# declare the check to Check_MK
+check_info["docker_dangling_images"] = {
+    "check_function"          : check_docker_dangling_images,
+    "inventory_function"      : inventory_docker_dangling_images,
+    "service_description"     : 'Docker - Dangling images',
+    "has_perfdata"            : True,
+}

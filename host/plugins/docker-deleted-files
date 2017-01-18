@@ -1,0 +1,6 @@
+#!/bin/sh 
+
+echo "<<<docker_deleted_files>>>" 
+
+sudo ls -al /proc/$(sudo cat /var/run/docker.pid)/fd | grep deleted
+
