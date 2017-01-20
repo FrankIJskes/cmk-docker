@@ -1,8 +1,9 @@
 #!/bin/sh
+# Report the number of dangling images
+# Created by Frank IJskes for Rijkswaterstaat
 
 echo "<<<docker_dangling_images>>>"
 
 CNT=$(sudo docker images -qf dangling=true | wc -l)
 
 echo "Number of dangling images: $CNT"
-

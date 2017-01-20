@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # -*- encoding: utf-8; -*-
-# Als je een perf-o-meter wilt, kijk dan op: https://mathias-kettner.de/checkmk_devel_perfometer.html
+# Created by Frank IJskes for Rijkswaterstaat
 
 # the inventory function
 def inventory_docker_deleted_files(info):
@@ -10,9 +10,10 @@ def inventory_docker_deleted_files(info):
 
 # the check function
 def check_docker_deleted_files(item, params, info):
-
+    # for now the alert levels in here
     warning_level=1
     error_level=20
+    # every line contains the name of the files that are deleted and left open. Currently only the number of deleted files are used.
     count = len( info )
     perfdata = [( "Count", str(count) )]
     if count >= warning_level:

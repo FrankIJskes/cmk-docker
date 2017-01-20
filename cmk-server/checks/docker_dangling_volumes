@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- encoding: utf-8; -*-
-# Als je een perf-o-meter wilt, kijk dan op: https://mathias-kettner.de/checkmk_devel_perfometer.html
+# Created by Frank IJskes for Rijkswaterstaat
+
 
 # the inventory function
 def inventory_docker_dangling_volumes(info):
@@ -12,6 +13,7 @@ def inventory_docker_dangling_volumes(info):
 def check_docker_dangling_volumes(item, params, info):
     for line in info:
         count=line[4]
+
     perfdata = [( "Count", str(count) )]
     if int(count) > 0:
         result = "Nr of dangling volumes: " + str(count)

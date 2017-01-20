@@ -1,6 +1,7 @@
-#!/bin/sh 
+#!/bin/sh
+# Report the number of deleted files left open by the docker deamon
+# Created by Frank IJskes for Rijkswaterstaat
 
-echo "<<<docker_deleted_files>>>" 
+echo "<<<docker_deleted_files>>>"
 
 sudo ls -al /proc/$(sudo cat /var/run/docker.pid)/fd | grep deleted
-
