@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # -*- encoding: utf-8; -*-
-# Created By Frank IJskes for Rijkswaterstaat
+# Als je een perf-o-meter wilt, kijk dan op: https://mathias-kettner.de/checkmk_devel_perfometer.html
 
 # the inventory function, return something/anything really
 def inventory_docker_info(info):
@@ -12,6 +12,7 @@ def inventory_docker_info(info):
 def normal_value(val,unit="B"):
     # input is anything like 5.1 MB or 2 GB
     # return value is in Bytes
+    #verwijder de . in de string
 
     m=1
     step=('B', 'kB', 'MB', 'GB')
@@ -21,7 +22,6 @@ def normal_value(val,unit="B"):
         m=m*1024
 
     z=float(m * float(val))
-    # the following is propably no longer neccesary, but since we do divides by this return value, we dont want divide by zero errors
     if z <=0:
         z=0.1
     return float(z)
@@ -29,33 +29,37 @@ def normal_value(val,unit="B"):
 # the check function
 # return of multi value:
 # 0 Nagios_Status ok=33012|crit=17|warn=120|unkw=16 Services ok/cr/wa/un: 33012/17/120/16
-# wish: containers: / containers-stopped / containers-paused
-# images: not really interesting information. Just the nr images that were ever present
-# if storage_driver = devicemapper, there is  data space(used/total/available) and meta data space (used/total/available)
-# other storage drivers are not used
+# zou willen: containers: / containers-stopped / containers-paused
+# images: geeft geen interessante info, enkel aantal images ooit aanwezig geweest. Niet interessant
+# als storage_driver = devicemapper, dan data space(used/total/available) en meta data space (used/total/available)
 def check_docker_info(item, params, info):
-    storagedriver_devicemapper=False
+    full_info=False
+    nr_containers=0
+    containers_paused=0
+    containers_stopped=0
 
     error=0
-    cont_warning=2
+
+    # tresholds for warnings about number of containers either stopped or paused
+    cont_warning=1
     cont_critical=4
 
     perfdata=[]
 
     for line in info:
         if "devicemapper" in line:
-            storagedriver_devicemapper=True
+            full_info=True
             break
 
-    # only devicemapper storage_driver has the following info
-    if storagedriver_devicemapper:
-        # for now the defaults and alert levels are set here.
+    # only devicemapper storage_driver has info about
+    if full_info:
         data_space_used=0
         data_space_total=0
         data_space_avail=0
         metadata_space_used=0
         metadata_space_total=0
         metadata_space_avail=0
+        # tresholds for wich we want to be notified about dataspase or metadataspace
     	data_used_warning=87
     	data_used_critical=92
 
@@ -77,11 +81,11 @@ def check_docker_info(item, params, info):
                 if "Available:" in line:
                     metadata_space_avail=normal_value(line[-2],line[-1])
 
-        # treshold determination (metadata and data).
+        # treshold bepaling.. (metadata en data).
         # calculate percentage
         percD=float( data_space_used*100 / data_space_total)
-        if percD > data_used_warning:
-            if percD > data_used_critical:
+        if percD >= data_used_warning:
+            if percD >= data_used_critical:
                 error=max(error,2)
             else:
                 error=max(error,1)
@@ -89,34 +93,31 @@ def check_docker_info(item, params, info):
         perfdata.append(pD)
 
         percM=float(metadata_space_used*100 / metadata_space_total)
-        if percM > data_used_warning:
-            if percM > data_used_critical:
+        if percM >= data_used_warning:
+            if percM >= data_used_critical:
                 error=max(error,2)
             else:
                 error=max(error,1)
         pM=('MetadataSpaceUsed',int(percM),data_used_warning,data_used_critical)
         perfdata.append(pM)
+        #A=A+str(pM)+str(pD)
 
-    # container checks. Older versions do not report running/paused/stopped information.
-    nr_containers=0
-    containers_paused=0
-    containers_stopped=0
-
+    # container checks. Older versions do not report running/paused/stopped this information.
     for line in info:
-        if "Containers" in line:
-            nr_containers=line.split(":")[1].strip()
-        if " Paused" in line:
-            containers_paused=line.split(":")[1].strip()
-        if " Stopped" in line:
-            containers_stopped=line.split(":")[1].strip()
+        if "Containers:" in line:
+            nr_containers=line[-1]
+        if "Paused:" in line:
+            containers_paused=line[-1]
+        if "Stopped:" in line:
+            containers_stopped=line[-1]
     # Containers tresholds
-    if int(containers_paused) > cont_warning:
+    if int(containers_paused) >= cont_warning:
         error=max(error,1)
-        if int(containers_paused) > cont_critical:
+        if int(containers_paused) >= cont_critical:
             error=max(error,2)
-    if int(containers_stopped) > cont_warning:
+    if int(containers_stopped) >= cont_warning:
         error=max(error,1)
-        if int(containers_stopped) > cont_critical:
+        if int(containers_stopped) >= cont_critical:
             error=max(error,2)
 
     pCP=('ContainersPaused',int(containers_paused),0,0)
