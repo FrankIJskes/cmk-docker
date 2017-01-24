@@ -33,6 +33,7 @@ def normal_value(val,unit="B"):
 # images: geeft geen interessante info, enkel aantal images ooit aanwezig geweest. Niet interessant
 # als storage_driver = devicemapper, dan data space(used/total/available) en meta data space (used/total/available)
 def check_docker_info(item, params, info):
+    add_info=""
     full_info=False
     nr_containers=0
     containers_paused=0
@@ -85,6 +86,7 @@ def check_docker_info(item, params, info):
         # calculate percentage
         percD=float( data_space_used*100 / data_space_total)
         if percD >= data_used_warning:
+            add_info=add_info+" DataSpaceUsed:"+str(round(percD,1))+"%"
             if percD >= data_used_critical:
                 error=max(error,2)
             else:
@@ -94,6 +96,7 @@ def check_docker_info(item, params, info):
 
         percM=float(metadata_space_used*100 / metadata_space_total)
         if percM >= data_used_warning:
+            add_info=add_info+"  MetaDataSpaceUsed:"+str(round(percM,1))+"%"
             if percM >= data_used_critical:
                 error=max(error,2)
             else:
@@ -112,10 +115,12 @@ def check_docker_info(item, params, info):
             containers_stopped=line[-1]
     # Containers tresholds
     if int(containers_paused) >= cont_warning:
+        add_info=add_info+"  Paused containers:"+str(containers_paused)
         error=max(error,1)
         if int(containers_paused) >= cont_critical:
             error=max(error,2)
     if int(containers_stopped) >= cont_warning:
+        add_info=add_info+"  Stopped containers:"+str(containers_stopped)
         error=max(error,1)
         if int(containers_stopped) >= cont_critical:
             error=max(error,2)
@@ -125,7 +130,10 @@ def check_docker_info(item, params, info):
 
     perfdata.append(pCP)
     perfdata.append(pCS)
-    result = "Docker info"
+    if error==0:
+        result="Docker info: OK"
+    else:
+        result = "Docker info ="+ add_info
     yield [error, result, perfdata ]
     #return STATE infotext PERFDATA
     # format PERFDATA -> [( name , value , name , value)
