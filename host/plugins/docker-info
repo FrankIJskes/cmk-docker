@@ -5,3 +5,5 @@
 echo "<<<docker_info>>>"
 
 sudo docker info
+sudo docker ps -a 
+

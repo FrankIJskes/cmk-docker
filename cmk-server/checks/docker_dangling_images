@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # -*- encoding: utf-8; -*-
-# Created by Frank IJskes for Rijkswaterstaat
+# Author: Frank IJskes for RWS
 
 # the inventory function
 def inventory_docker_dangling_images(info):
@@ -12,7 +12,6 @@ def inventory_docker_dangling_images(info):
 def check_docker_dangling_images(item, params, info):
     for line in info:
         count=line[4]
-
     perfdata = [( "Count", str(count) )]
     if int(count) > 0:
         result = "Nr of dangling images: " + str(count)

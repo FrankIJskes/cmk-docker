@@ -1,6 +1,43 @@
 #!/usr/bin/python
 # -*- encoding: utf-8; -*-
-# Als je een perf-o-meter wilt, kijk dan op: https://mathias-kettner.de/checkmk_devel_perfometer.html
+# Author: Frank IJskes for RWS
+# version 1.4
+# Added filtering for stopped containers. Puased containers are not done yet. I have no need for that now.
+
+FILTER_STOPPED_CONTAINERS=['ivs-vpo-mule-migr','siam-oc-db-migr','ivs-rla-db-migr','ivs-infra-mule-migr','ivs-vwn-db-migr']
+FILTER_PAUSED_CONTAINERS=['']
+
+# Some containers are ok to be stopped/paused. These are defined in the global variables
+def count_containers(info, state, FILTER):
+    """
+    info is what is passed to these tests, ie the full output of the bash script
+    state is the "status" value in the docker ps -a that we want to count
+    FILTER is the filter to be used for these tests
+    """
+    # hmmm, how to determine what the output is of the docker ps -a?
+    # the line starts with "CONTAINER"
+    i=0
+    containers_found=[]
+    containers_filtered=[]
+    for line in info:
+        if "CONTAINER" in line[0]:
+            # we have the index for the docker output, but we want to skip that 1 line.
+            i=i+1
+            for ps_line in info[i:]:
+                # scan the lines for containers that have the "state" we want to check
+                if state in ps_line:
+                    found=False
+                    # verify that we do not filter this specific line
+                    for f in FILTER:
+                        if f in ps_line:
+                            containers_filtered.append(ps_line[1])
+                            found=True
+                            break
+                    if found==False:
+                        # If not in filter, then append the full name of the container
+                        containers_found.append(ps_line[1])
+    # return dictionary of containers that are not filtered, nr of containers that are not filtered, dict of filtered containers, nr of containers filtered
+    return containers_found, len(containers_found),containers_filtered, len(containers_filtered)
 
 # the inventory function, return something/anything really
 def inventory_docker_info(info):
@@ -12,7 +49,6 @@ def inventory_docker_info(info):
 def normal_value(val,unit="B"):
     # input is anything like 5.1 MB or 2 GB
     # return value is in Bytes
-    #verwijder de . in de string
 
     m=1
     step=('B', 'kB', 'MB', 'GB')
@@ -22,6 +58,7 @@ def normal_value(val,unit="B"):
         m=m*1024
 
     z=float(m * float(val))
+    # The following should not happen, but we want some data...
     if z <=0:
         z=0.1
     return float(z)
@@ -29,8 +66,6 @@ def normal_value(val,unit="B"):
 # the check function
 # return of multi value:
 # 0 Nagios_Status ok=33012|crit=17|warn=120|unkw=16 Services ok/cr/wa/un: 33012/17/120/16
-# zou willen: containers: / containers-stopped / containers-paused
-# images: geeft geen interessante info, enkel aantal images ooit aanwezig geweest. Niet interessant
 # als storage_driver = devicemapper, dan data space(used/total/available) en meta data space (used/total/available)
 def check_docker_info(item, params, info):
     add_info=""
@@ -41,12 +76,16 @@ def check_docker_info(item, params, info):
 
     error=0
 
-    # tresholds for warnings about number of containers either stopped or paused
+    # tresholds for warnings about number of containers either stopped or paused after being filtered
     cont_warning=1
     cont_critical=4
+    # tresholds of maximum filtered containers
+    cont_filtered_warning=4
+    cont_filtered_critical=6
 
     perfdata=[]
 
+    # check if there is devicemapper storage used.
     for line in info:
         if "devicemapper" in line:
             full_info=True
@@ -103,7 +142,7 @@ def check_docker_info(item, params, info):
                 error=max(error,1)
         pM=('MetadataSpaceUsed',int(percM),data_used_warning,data_used_critical)
         perfdata.append(pM)
-        #A=A+str(pM)+str(pD)
+
 
     # container checks. Older versions do not report running/paused/stopped this information.
     for line in info:
@@ -113,17 +152,39 @@ def check_docker_info(item, params, info):
             containers_paused=line[-1]
         if "Stopped:" in line:
             containers_stopped=line[-1]
+
     # Containers tresholds
     if int(containers_paused) >= cont_warning:
         add_info=add_info+"  Paused containers:"+str(containers_paused)
         error=max(error,1)
         if int(containers_paused) >= cont_critical:
             error=max(error,2)
+
     if int(containers_stopped) >= cont_warning:
-        add_info=add_info+"  Stopped containers:"+str(containers_stopped)
-        error=max(error,1)
-        if int(containers_stopped) >= cont_critical:
+        cc,ccl,fc,fcl=count_containers(info, "Exited", FILTER_STOPPED_CONTAINERS)
+        add_info=add_info+"  Stopped containers="+str(containers_stopped)
+
+        if ccl==0 and fcl==0:
+            # apparently no usable info found via docker ps -a, because this should not happen return an error
             error=max(error,2)
+
+        # if nr of stopped containers after filtering is still too much
+        if ccl>=cont_warning:
+            # also show list of stopped containers
+            add_info=add_info+"*"+str(cc)+"*"
+            error=max(error,1)
+            if ccl >= cont_critical:
+                error=max(error,2)
+
+        # Now add info about filtered containers
+        if fcl:
+            add_info=add_info+"<Filtered="+str(fcl)+"-"+str(fc)+">"
+
+        # if number of filtered containers is still too much
+        if fcl>=cont_filtered_warning:
+            error=max(error,1)
+            if fcl>=cont_filtered_critical:
+                error=max(error,2)
 
     pCP=('ContainersPaused',int(containers_paused),0,0)
     pCS=('ContainersStopped',int(containers_stopped),0,0)
@@ -131,7 +192,7 @@ def check_docker_info(item, params, info):
     perfdata.append(pCP)
     perfdata.append(pCS)
     if error==0:
-        result="Docker info: OK"
+        result="Docker info: "+ add_info
     else:
         result = "Docker info ="+ add_info
     yield [error, result, perfdata ]
