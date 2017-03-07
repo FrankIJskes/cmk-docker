@@ -4,8 +4,9 @@
 # version 1.4
 # Added filtering for stopped containers. Puased containers are not done yet. I have no need for that now.
 
-FILTER_STOPPED_CONTAINERS=['ivs-vpo-mule-migr','siam-oc-db-migr','ivs-rla-db-migr','ivs-infra-mule-migr','ivs-vwn-db-migr']
+FILTER_STOPPED_CONTAINERS=['ivs-vpo-mule-migr','siam-oc-db-migr','ivs-rla-db-migr','ivs-infra-mule-migr','ivs-vwn-db-migr','ivs-cad-db-migr','ivs-sbp-db-migr']
 FILTER_PAUSED_CONTAINERS=['']
+FILTER_CREATED_CONTAINERS=['']
 
 # Some containers are ok to be stopped/paused. These are defined in the global variables
 def count_containers(info, state, FILTER):
@@ -14,7 +15,7 @@ def count_containers(info, state, FILTER):
     state is the "status" value in the docker ps -a that we want to count
     FILTER is the filter to be used for these tests
     """
-    # hmmm, how to determine what the output is of the docker ps -a?
+    # how to determine what the output is of the docker ps -a?
     # the line starts with "CONTAINER"
     i=0
     containers_found=[]
@@ -162,10 +163,15 @@ def check_docker_info(item, params, info):
 
     if int(containers_stopped) >= cont_warning:
         cc,ccl,fc,fcl=count_containers(info, "Exited", FILTER_STOPPED_CONTAINERS)
-        add_info=add_info+"  Stopped containers="+str(containers_stopped)
+        cCreated,cCreatedl,fCreated,fCreatedl=count_containers(info, "Created", FILTER_STOPPED_CONTAINERS)
+
+        add_info=add_info+" Stopped containers="+str(containers_stopped)
 
         if ccl==0 and fcl==0:
             # apparently no usable info found via docker ps -a, because this should not happen return an error
+            # if there is a Created container. In that case add the info about the created container. How these get to exist...?
+            if cCreated>0:
+                add_info=add_info+"<Created!="+str(cCreated)+">"
             error=max(error,2)
 
         # if nr of stopped containers after filtering is still too much
