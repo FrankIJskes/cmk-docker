@@ -7,4 +7,4 @@ Copy the (python) files in cmk-docker/cmk-server/checks/ to your check_mk server
 
 Maybe you'll need to give a : cmk -R to reload the new python scripts.
 
-Frank IJskes  for Rijkswaterstaat
+Frank IJskes
